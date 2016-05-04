@@ -4,7 +4,14 @@
 <h1>Game Tracker Login</h1>
 
 <form action="/login" method="post">
-    <input type="text" placeholder="Enter your name" name="loginName"/>
+    <div>
+        <!-- do we have errors for the name field? -->
+        {{#errors.name}}
+            <div class="error">{{.}}</div>
+        {{/errors.name}}
+
+        <input type="text" placeholder="Enter your name" name="name" />
+    </div>
     <button type="submit">Login</button>
 </form>
 

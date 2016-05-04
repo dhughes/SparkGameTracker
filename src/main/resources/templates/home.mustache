@@ -1,12 +1,15 @@
 <html>
 <body>
 
-<h1>Game Tracker Home</h1>
+<h1>Game Tracker for {{user.name}}</h1>
 
-<p><a href="/logout">Logout</a></p>
+<!-- our nav bar! -->
+<ul>
+    <li><a href="/logout">Logout</a></li>
+    <li><a href="/create-game">Create Game</a></li>
+</ul>
 
-<p><a href="/create-game">Create Game</a></p>
-
+<!-- the list of games this user has added -->
 <ol>
     {{#user.games}}
         <li>{{name}}</li>

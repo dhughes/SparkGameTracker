@@ -9,16 +9,32 @@
 
 <form action="/create-game" method="post">
     <div>
-        <input type="text" name="gameName" placeholder="Game name" value="{{gameName}}">
+        <!-- do we have errors for the name field? -->
+        {{#errors.name}}
+            <div class="error">{{.}}</div>
+        {{/errors.name}}
+        <input type="text" name="name" placeholder="Game name" value="{{game.name}}">
     </div>
+
     <div>
-        <input type="text" name="gameGenre" placeholder="Game genre" value="{{gameGenre}}">
+        {{#errors.genre}}
+            <div class="error">{{.}}</div>
+        {{/errors.genre}}
+        <input type="text" name="genre" placeholder="Game genre" value="{{game.genre}}">
     </div>
+
     <div>
-        <input type="text" name="gamePlatform" placeholder="Platform" value="{{gamePlatform}}">
+        {{#errors.platform}}
+            <div class="error">{{.}}</div>
+        {{/errors.platform}}
+        <input type="text" name="platform" placeholder="Platform" value="{{game.platform}}">
     </div>
+
     <div>
-        <input type="text" name="gameYear" placeholder="Release year" value="{{gameYear}}">
+        {{#errors.releaseYear}}
+            <div class="error">{{.}}</div>
+        {{/errors.releaseYear}}
+        <input type="text" name="releaseYear" placeholder="Release year" value="{{game.releaseYearString}}">
     </div>
 
     <button type="submit">Add game</button>

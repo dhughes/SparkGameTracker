@@ -1,120 +1,149 @@
+import org.apache.commons.beanutils.BeanUtils;
 import spark.ModelAndView;
 import spark.Spark;
 import spark.template.mustache.MustacheTemplateEngine;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+
 
 import static spark.Spark.halt;
 
 /**
- * Created by doug on 5/3/16.
+ * This is the Main class that configures our Spark application
  */
 public class Main {
 
     public static void main(String[] args) {
 
+        // this is a filter that is executed in front of all requests.
+        Spark.before(
+                "*",
+                (request, response) -> {
+                    // is the user NOT on the login form?
+                    // and, is the user NOT logged in?
+                    if(!request.uri().equals("/login") && !request.session().attributes().contains("user")){
+                        // if so, then we need to redirect to the login form!
+                        response.redirect("/login");
+                        halt();
+                    }
+                }
+        );
+
+        // this is our homepage
         Spark.get(
                 "/",
                 (request, response) -> {
-                    HashMap m = new HashMap();
+                    // create a map to hold our model
+                    HashMap<String, Object> m = new HashMap<>();
 
-                    if(!request.session().attributes().contains("user")){
-                        // show login
-                        return new ModelAndView(m, "login.mustache");
-                    } else {
-                        // show home
-                        User user = request.session().attribute("user");
-                        //user.games.add(new Game("Mario Bros", "platformer", "NES", 1987));
-                        m.put("user", user);
+                    // Get the user from their session
+                    User user = request.session().attribute("user");
+                    // put the user into our model
+                    m.put("user", user);
 
-                        return new ModelAndView(m, "home.mustache");
-                    }
+                    // display the home template with our model
+                    return new ModelAndView(m, "home.mustache");
                 },
                 new MustacheTemplateEngine()
         );
 
+        // this shows the login form
+        Spark.get(
+                "/login",
+                (request, response) -> {
+                    // just show the login form
+                    return new ModelAndView(null, "login.mustache");
+                },
+                new MustacheTemplateEngine()
+        );
+
+        // this handles when the login form is submitted
         Spark.post(
                 "/login",
                 (request, response) -> {
 
-                    if(request.queryParams("loginName").trim().length() > 0) {
-                        request.session().attribute("user", new User(request.queryParams("loginName")));
-                    }
-                    response.redirect("/");
-                    halt();
+                    // create a user bean and populate it using the submitted data
+                    User user = new User();
+                    BeanUtils.populate(user, request.queryMap().toMap());
 
-                    return "";
-                }
-        );
+                    // validate our User
+                    HashMap<String, String> errors = user.validate();
 
-        Spark.get(
-                "/logout",
-                (request, response) -> {
-                    request.session().invalidate();
-                    response.redirect("/");
-                    halt();
+                    // were there validation errors?
+                    if(errors.size() == 0) {
+                        // add our user into the session
+                        request.session().attribute("user", user);
 
-                    return "";
-                }
-        );
-
-        Spark.get(
-                "/create-game",
-                (request, response) -> {
-                    HashMap m = new HashMap();
-
-                    if(!request.session().attributes().contains("user")){
-                        // show login
+                        // redirect to the homepage
                         response.redirect("/");
                         halt();
-
-                        return null;
                     } else {
-                        // show game form
-                        return new ModelAndView(m, "gameForm.mustache");
+                        // the login failed
+                        HashMap<String, Object> m = new HashMap<>();
+                        m.put("errors", errors);
+                        return new ModelAndView(m, "login.mustache");
                     }
+
+                    // we must always return something
+                    return null;
                 },
                 new MustacheTemplateEngine()
         );
 
+        // this logs the user out
+        Spark.get(
+                "/logout",
+                (request, response) -> {
+                    // find the current user's session and invalidate it.
+                    request.session().invalidate();
+                    // redirect to the login page
+                    response.redirect("/login");
+                    halt();
+
+                    // we must always return something
+                    return null;
+                }
+        );
+
+        // this shows the create game form
+        Spark.get(
+                "/create-game",
+                (request, response) -> {
+                    // show game form
+                    return new ModelAndView(null, "gameForm.mustache");
+                },
+                new MustacheTemplateEngine()
+        );
+
+        // handle submission of the create game form
         Spark.post(
                 "/create-game",
                 (request, response) -> {
 
-                    if(!request.session().attributes().contains("user")){
-                        // show login
+                    // create a game bean and populate it using the submitted data
+                    Game game = new Game();
+                    BeanUtils.populate(game, request.queryMap().toMap());
+
+                    // validate our game
+                    HashMap<String, String> errors = game.validate();
+
+                    // were there validation errors?
+                    if(errors.size() == 0) {
+                        // nope, get our user from the session
+                        User user = request.session().attribute("user");
+                        // add the game to our user
+                        user.games.add(game);
+                        // redirect to the home page
                         response.redirect("/");
                         halt();
-
                     } else {
-                        // create the game and add to the user
-                        // todo: handle validation
-                        try {
-                            Game game = new Game(
-                                    request.queryParams("gameName"),
-                                    request.queryParams("gameGenre"),
-                                    request.queryParams("gamePlatform"),
-                                    Integer.valueOf(request.queryParams("gameYear"))
-                            );
-
-                            User user = request.session().attribute("user");
-                            user.games.add(game);
-                            response.redirect("/");
-                            halt();
-
-                        } catch (NumberFormatException e){
-                            // show game form
-                            HashMap m = new HashMap();
-                            m.put("error", "There was a problem with your release year.");
-
-                            m.put("gameName", request.queryParams("gameName"));
-                            m.put("gameGenre", request.queryParams("gameGenre"));
-                            m.put("gamePlatform", request.queryParams("gamePlatform"));
-                            m.put("gameYear", request.queryParams("gameYear"));
-
-                            return new ModelAndView(m, "gameForm.mustache");
-
-                        }
+                        // there were errors. we'll add them to our model and show the create game form
+                        HashMap<String, Object> m = new HashMap<>();
+                        m.put("game", game);
+                        m.put("errors", errors);
+                        // finally, show the game form again
+                        return new ModelAndView(m, "gameForm.mustache");
                     }
 
                     return null;
